@@ -581,6 +581,8 @@ function brightenWowo(G) {
       const c = m.clone();
       const hex = m.color.getHex();
       if (hex === 0x6a4a2a) { c.emissive.setHex(0x6a4a2a); c.emissiveIntensity = 0.3; } // jacket (V7-night: 0.7 glowed cream-white at night, hid the brown)
+      else if (hex === 0x2e2a26) { c.emissive.setHex(0x5a4632); c.emissiveIntensity = 0.5; } // legs — were near-black-on-black at night, the figure read as a floating torso
+      else if (hex === 0x1a1a1a) { c.emissive.setHex(0x2a2a2a); c.emissiveIntensity = 0.6; } // hair — same, the head had no cap against the black sky
       else if (hex === 0xd9a077) { c.emissive.setHex(0xd9a077); c.emissiveIntensity = 0.35; } // skin
       else if (hex === 0x8a8f96) { c.color.setHex(0xaab0b8); c.emissive.setHex(0x4a5568); c.emissiveIntensity = 0.6; } // tanks
       else if (hex === 0xd86a20) { c.emissive.setHex(0xd86a20); c.emissiveIntensity = 0.8; } // bands
@@ -1014,6 +1016,10 @@ function stageCombat(G) {
   // Wowo high-contrast vs black (V6's night fix) in V7's low-poly style.
   G.stats.playSeconds = 14400;
   restageSky(G, 'night');
+  // Moon behind Wowo's head (halo): restageSky's (180,180,-80) lands ~40 px
+  // up-right of his head; this shifts it ~27 m screen-left + ~27 m down.
+  const moonObj = G.scene.getObjectByName('v4-moon');
+  if (moonObj) moonObj.position.set(154, 135, -100); // was (202,153,-64): landed 90 px right of his head, not behind it
   setWanted(G, 2);
   G.police.units = [
     { name: 'UNIT 07', dist: 120, status: 'PURSUIT', mesh: null },
@@ -1039,16 +1045,18 @@ function stageCombat(G) {
   // (and above the dialogue box, which covers the bottom-centre of frame),
   // and grow the jetpack flame so the thrust reads at a glance.
   setJetpack(G, true);
-  // V5 F8: Wowo LOWER + BIGGER + PERSON-first. V4 had him at y 5.0 with a
-  // 2.0x flame — probe: head sy 18 (top edge, behind the JOB panel),
-  // chest (319,104), flame dominating. Now y 3.4 (head ~sy 190, clear of
-  // the top panels), mesh 1.25x, flame back to the 1.2x default (effective
-  // 1.5x through the mesh scale — still smaller than V4's 2.0x).
-  G.player.pos.y = 3.4;
+  // V7-night fix (parent read 03:41 WIB: Wowo did NOT read as a jetpack
+  // figure in 2 s — a small figure on the roof, flame not obvious). V5 F8
+  // had him at y 3.4, mesh 1.2x, flame 1.0x. First try (y 4.0, mesh 1.45x,
+  // flame 1.5x, dist 5.0) overshot: ~440 px tall, dead centre, flame a
+  // giant triangle hiding the blast. Now y 3.7, mesh 1.3x, flame 1.15x,
+  // dist 5.5, lat 3 (shifts him left of the blast): ~330 px figure+flame,
+  // feet clearly airborne against the dark sky, blast clear to his right.
+  G.player.pos.y = 3.7;
   const jpFlame = G.player.mesh && G.player.mesh.userData
     ? G.player.mesh.userData.jetpackFlame : null;
-  if (jpFlame) jpFlame.scale.setScalar(1.0); // V5r4: was 1.2
-  G.player.mesh.scale.setScalar(1.2); // V5 F8: Wowo bigger (was 1.25 — 1.25 + close camera cropped his tanks at the top edge)
+  if (jpFlame) jpFlame.scale.setScalar(0.8); // was 1.15: the long cone hid his legs and read as a triangle, not thrust
+  G.player.mesh.scale.setScalar(1.3); // was 1.45: too big at 5.0 m, cropped the composition
   // V5r3 F8: 3/4 profile — straight down his back, the jetpack tanks hid
   // the person entirely. Turned toward the camera so his right side (arm,
   // hip, leg) reads beside the tanks instead of behind them.
@@ -1061,16 +1069,18 @@ function stageCombat(G) {
   // Jetpack smoke trail below Wowo — the rising puffs are what sells
   // "he flew up here" at a glance (kept >8 m from the blast point so the
   // smoke-dimming below never touches them).
-  spawnSmoke(G, PX, 2.8, PZ, 1.2);
-  spawnSmoke(G, PX, 2.0, PZ, 1.0);
-  spawnSmoke(G, PX, 1.2, PZ, 0.9);
+  spawnSmoke(G, PX, 3.1, PZ, 1.2);
+  spawnSmoke(G, PX, 2.3, PZ, 1.0);
+  spawnSmoke(G, PX, 1.5, PZ, 0.9);
   // Warm key light on Wowo from the CAMERA side (behind-above him): he
   // faces away from the western sun, so his front reads near-black without
   // it — the light lifts his jacket, skin and the jetpack tanks out of the
   // dark sunset sky. Placed toward the camera so his BACK (tanks + flame,
   // what the camera sees) is lit, not just his front.
-  const wowoLight = new THREE.PointLight(0xffc27a, 130, 16, 1.6); // V7-night: was 200 — blew the brown jacket out to cream
-  wowoLight.position.set(PX - Math.sin(H) * 3, 5.5, PZ - Math.cos(H) * 3);
+  const wowoLight = new THREE.PointLight(0xffc27a, 110, 16, 1.6); // V7-night fix: was 160 straight behind (flattened facets, jacket went cream)
+  // Behind-SIDE light (2 m back + 3.5 m to the side): models the low-poly
+  // facets instead of washing them flat.
+  wowoLight.position.set(PX - Math.sin(H) * 2 + Math.cos(H) * 3.5, 5.0, PZ - Math.cos(H) * 2 - Math.sin(H) * 3.5);
   G.scene.add(wowoLight);
 
   // --- the blast itself, 14 m ahead of Wowo, dead centre of the frame ---
@@ -1185,14 +1195,14 @@ function stageCombat(G) {
   // toward the player, and the BAZOOKA shot itself — a bright tracer from
   // Wowo's gun to the heart of the blast, plus a rocket frozen mid-flight
   // halfway there.
-  const pPos = new THREE.Vector3(PX, 3.4, PZ); // V5 F8: Wowo now at y 3.4
+  const pPos = new THREE.Vector3(PX, 3.7, PZ); // V7-night fix: Wowo now at y 3.7
   for (const e of [e1, e2]) {
     const from = new THREE.Vector3(e.pos.x, 1.35, e.pos.z);
-    const to = new THREE.Vector3(pPos.x + (G.rng() - 0.5) * 1.2, 4.4, pPos.z + (G.rng() - 0.5) * 1.2); // V5 F8: was 5.0
+    const to = new THREE.Vector3(pPos.x + (G.rng() - 0.5) * 1.2, 4.7, pPos.z + (G.rng() - 0.5) * 1.2); // V7-night fix: was 4.4
     fireBurst(G, from, to);
   }
   const gunFrom = new THREE.Vector3(
-    pPos.x + Math.sin(H) * 0.6, 4.6, pPos.z + Math.cos(H) * 0.6, // V5 F8: was 6.0
+    pPos.x + Math.sin(H) * 0.6, 4.9, pPos.z + Math.cos(H) * 0.6, // V7-night fix: was 4.6
   );
   const blastTop = new THREE.Vector3(bp.x, 2.5, bp.z);
   fireBurst(G, gunFrom, blastTop);
@@ -1352,8 +1362,10 @@ function stageCombat(G) {
   // V5r2: dist 6.0 (was 4.5), height 0.0 (was -1.5) — at 4.5 m the lowered
   // + enlarged Wowo subtended ~32 deg and his tanks cropped at the top
   // edge; pulled back and level with him (cam y = 3.4) he fits whole.
-  placeChaseCamera(G, G.player.pos, H, 6.0, 0.0, 0, 0, 64, 2);
-  G.camera.lookAt(bp.x, 4.0, bp.z);
+  // V7-night fix: dist 5.5, lat 3, lookAt y 4.4 (was dist 5.0, lat 2,
+  // lookAt 4.6 — Wowo dead centre at ~440 px, hiding the blast).
+  placeChaseCamera(G, G.player.pos, H, 5.5, 0.0, 0, 0, 64, 3);
+  G.camera.lookAt(bp.x, 4.4, bp.z);
   G.camera.updateProjectionMatrix();
   const popLayer = document.getElementById('score-popups');
   if (popLayer) popLayer.style.top = '20%';
