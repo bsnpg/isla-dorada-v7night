@@ -12,7 +12,6 @@ const el = {};
 let last = {};
 let dialogueTimer = null;
 let toastTimer = null;
-let weaponSlots = [];
 let gaugeCtx = null;
 let popups = []; // { el, born, key }
 let seenScoreKeys = new Set();
@@ -92,33 +91,107 @@ export function portraitSVG(speaker) {
 
 // ---------------------------------------------------------------- weapon art
 // Flat, drawn SVG weapon silhouettes — original geometric art, no images.
-// Each is a 64x28 viewBox gun profile in gold; readable at ~60 px wide.
-// Used by the GTA-style top-right weapon panel (current weapon + ammo).
-function weaponSVG(name) {
+// Each is a 64x28 viewBox gun profile; readable at ~60 px wide.
+// Used by the GTA-style top-right weapon panel (current weapon + ammo) and
+// by the weapon wheel (one silhouette per wedge, gold on dark, dark on the
+// gold selected wedge — hence the colour parameter).
+function weaponSVGInner(name, color) {
   const n = String(name || '').toUpperCase();
-  const gold = '#f2c230';
+  const c = color || '#f2c230';
   let body = '';
-  if (n.includes('PISTOL')) {
-    body = `<rect x="10" y="9" width="34" height="6" rx="1" fill="${gold}"/>`
-      + `<rect x="30" y="14" width="9" height="12" rx="1" fill="${gold}"/>`
-      + `<rect x="42" y="10" width="4" height="4" fill="${gold}"/>`;
+  if (n.includes('FIST')) {
+    body = `<circle cx="20" cy="9" r="4.5" fill="${c}"/><circle cx="29" cy="8" r="4.5" fill="${c}"/>`
+      + `<circle cx="38" cy="8" r="4.5" fill="${c}"/><circle cx="47" cy="9" r="4.5" fill="${c}"/>`
+      + `<rect x="15" y="11" width="36" height="13" rx="6" fill="${c}"/>`
+      + `<rect x="11" y="17" width="10" height="6" rx="3" fill="${c}"/>`;
+  } else if (n.includes('PISTOL')) {
+    body = `<rect x="10" y="9" width="34" height="6" rx="1" fill="${c}"/>`
+      + `<rect x="30" y="14" width="9" height="12" rx="1" fill="${c}"/>`
+      + `<rect x="42" y="10" width="4" height="4" fill="${c}"/>`;
   } else if (n.includes('SMG')) {
-    body = `<rect x="6" y="10" width="48" height="6" rx="1" fill="${gold}"/>`
-      + `<rect x="26" y="15" width="8" height="11" rx="1" fill="${gold}"/>`
-      + `<rect x="6" y="12" width="8" height="5" fill="${gold}"/>`
-      + `<rect x="52" y="11" width="6" height="4" fill="${gold}"/>`;
+    body = `<rect x="6" y="10" width="48" height="6" rx="1" fill="${c}"/>`
+      + `<rect x="26" y="15" width="8" height="11" rx="1" fill="${c}"/>`
+      + `<rect x="6" y="12" width="8" height="5" fill="${c}"/>`
+      + `<rect x="52" y="11" width="6" height="4" fill="${c}"/>`;
   } else if (n.includes('SHOTGUN')) {
-    body = `<rect x="4" y="10" width="56" height="4" rx="1" fill="${gold}"/>`
-      + `<rect x="30" y="14" width="14" height="4" fill="${gold}"/>`
-      + `<rect x="4" y="13" width="12" height="7" rx="1" fill="${gold}"/>`
-      + `<rect x="14" y="14" width="8" height="4" fill="${gold}"/>`;
+    body = `<rect x="4" y="10" width="56" height="4" rx="1" fill="${c}"/>`
+      + `<rect x="30" y="14" width="14" height="4" fill="${c}"/>`
+      + `<rect x="4" y="13" width="12" height="7" rx="1" fill="${c}"/>`
+      + `<rect x="14" y="14" width="8" height="4" fill="${c}"/>`;
+  } else if (n.includes('BAZOOKA')) {
+    body = `<rect x="4" y="11" width="50" height="7" rx="3" fill="${c}"/>`
+      + `<path d="M54 11 L64 14.5 L54 18 Z" fill="${c}"/>`
+      + `<rect x="24" y="18" width="7" height="9" rx="1" fill="${c}"/>`
+      + `<rect x="34" y="7" width="10" height="4" rx="1" fill="${c}"/>`
+      + `<rect x="4" y="12" width="5" height="5" fill="${c}"/>`;
   } else { // Rifle
-    body = `<rect x="4" y="10" width="56" height="4" rx="1" fill="${gold}"/>`
-      + `<rect x="30" y="5" width="14" height="5" rx="1" fill="${gold}"/>`
-      + `<rect x="26" y="14" width="8" height="11" rx="1" fill="${gold}"/>`
-      + `<rect x="4" y="12" width="10" height="7" rx="1" fill="${gold}"/>`;
+    body = `<rect x="4" y="10" width="56" height="4" rx="1" fill="${c}"/>`
+      + `<rect x="30" y="5" width="14" height="5" rx="1" fill="${c}"/>`
+      + `<rect x="26" y="14" width="8" height="11" rx="1" fill="${c}"/>`
+      + `<rect x="4" y="12" width="10" height="7" fill="${c}"/>`;
   }
-  return `<svg viewBox="0 0 64 28" width="64" height="28" aria-hidden="true">${body}</svg>`;
+  return body;
+}
+
+function weaponSVG(name) {
+  return `<svg viewBox="0 0 64 28" width="64" height="28" aria-hidden="true">${weaponSVGInner(name)}</svg>`;
+}
+
+// ---------------------------------------------------------------- weapon wheel
+// GTA V weapon wheel: a circle divided into WEDGE segments (not boxes in a
+// ring). Six wedges — Fists on top, then Pistol, SMG, Shotgun, Rifle,
+// Bazooka clockwise — each carrying its silhouette, the selected wedge
+// gold with a dark icon, the rest dark with gold icons; the centre shows
+// the selected weapon's name + ammo. One SVG, rebuilt only when the
+// selection or an ammo count changes (renderHUD's signature check), so the
+// per-frame cost is a string compare. Wedge order is display-only: the
+// weapon index stays the combat index (Fists is index 5, appended last so
+// the staged shots' indices never move).
+const WHEEL_ORDER = [5, 0, 1, 2, 3, 4]; // display position -> weapon index
+const WHEEL_SIZE = 168, WHEEL_C = 84, WHEEL_R = 82, WHEEL_HOLE = 30;
+
+function wheelWedgePath(cx, cy, rOut, rIn, a0, a1) {
+  const rad = (d) => (d * Math.PI) / 180;
+  const pt = (r, a) => [cx + r * Math.cos(rad(a)), cy + r * Math.sin(rad(a))];
+  const [x0o, y0o] = pt(rOut, a0), [x1o, y1o] = pt(rOut, a1);
+  const [x1i, y1i] = pt(rIn, a1), [x0i, y0i] = pt(rIn, a0);
+  const f = (n) => n.toFixed(1);
+  return `M${f(x0i)} ${f(y0i)} L${f(x0o)} ${f(y0o)} A${rOut} ${rOut} 0 0 1 ${f(x1o)} ${f(y1o)}`
+    + ` L${f(x1i)} ${f(y1i)} A${rIn} ${rIn} 0 0 0 ${f(x0i)} ${f(y0i)} Z`;
+}
+
+function weaponWheelSVG(weapons, selectedIndex) {
+  const c = WHEEL_C;
+  let s = `<svg viewBox="0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}" width="${WHEEL_SIZE}" height="${WHEEL_SIZE}" aria-hidden="true">`;
+  s += `<circle cx="${c}" cy="${c}" r="${WHEEL_R}" fill="rgba(12,14,22,.72)"/>`;
+  WHEEL_ORDER.forEach((wi, k) => {
+    const mid = -90 + k * 60; // wedge k centred on this angle (0 deg = east)
+    const a0 = mid - 29, a1 = mid + 29; // 2 deg gaps = the GTA dividers
+    const sel = wi === selectedIndex;
+    const w = weapons[wi] || {};
+    const fill = sel ? '#f2c230' : 'rgba(16,20,31,.88)';
+    const ink = sel ? '#14141f' : '#f2c230';
+    s += `<path d="${wheelWedgePath(c, c, WHEEL_R, WHEEL_HOLE, a0, a1)}" fill="${fill}" stroke="rgba(242,194,48,.45)" stroke-width="1"/>`;
+    // Silhouette at r 52, barrel pointing outwards; ammo count at r 76 —
+    // the long bazooka tube used to run over its own ammo text at r 56/72.
+    const rad = (d) => (d * Math.PI) / 180;
+    const ix = c + 52 * Math.cos(rad(mid)), iy = c + 52 * Math.sin(rad(mid));
+    // Ammo text rides at r 76 but its x is clamped inside the circle: on the
+    // side wedges the radial point sits past the circle's edge, so the text
+    // hung off the gold wedge (dark-on-grass, unreadable) before the clamp.
+    const ax = Math.min(c + 58, Math.max(c - 58, c + 76 * Math.cos(rad(mid))));
+    const ay = c + 76 * Math.sin(rad(mid));
+    s += `<g transform="translate(${ix.toFixed(1)} ${iy.toFixed(1)}) rotate(${mid}) scale(0.55) translate(-32 -14)">${weaponSVGInner(w.name, ink)}</g>`;
+    const ammo = w.melee ? '—' : (typeof w.mag === 'number' ? `${w.mag}/${w.reserve}` : String(w.ammo ?? ''));
+    s += `<text x="${ax.toFixed(1)}" y="${(ay + 3.5).toFixed(1)}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="700" fill="${ink}">${ammo}</text>`;
+  });
+  s += `<circle cx="${c}" cy="${c}" r="${WHEEL_HOLE}" fill="#10141f" stroke="#f2c230" stroke-width="1.5"/>`;
+  const selW = weapons[selectedIndex] || {};
+  const selAmmo = selW.melee ? '—' : (typeof selW.mag === 'number' ? `${selW.mag}/${selW.reserve}` : String(selW.ammo ?? ''));
+  s += `<text x="${c}" y="${c - 3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="800" letter-spacing="1" fill="#f2c230">${String(selW.name || '').toUpperCase()}</text>`;
+  s += `<text x="${c}" y="${c + 14}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" font-weight="800" fill="#f5efe0">${selAmmo}</text>`;
+  s += `<circle cx="${c}" cy="${c}" r="${WHEEL_R}" fill="none" stroke="rgba(242,194,48,.55)" stroke-width="1.5"/>`;
+  return s + '</svg>';
 }
 
 // ---------------------------------------------------------------- formatting
@@ -194,8 +267,10 @@ function injectHudStyle() {
 #weapon-panel .wp-ammo small { font-size: 10px; color: var(--muted); }
 #weapon-panel .wp-hint { font: 600 9px var(--font-read); color: rgba(245,239,224,.45); letter-spacing: 1px; text-align: right; margin-top: 2px; }
 #weapon-panel .wp-sil svg { display: block; }
-.wslot.active { border-color: var(--gold); border-width: 2px; color: var(--gold); background: rgba(242,194,48,.16); }
-.wslot.active .ammo { color: var(--gold); font-weight: 700; }
+/* Weapon wheel (replaces the old rectangular slot row): the rack div holds
+   the wheel SVG; the wheel is 168 px wide inside the 230 px vitals column. */
+#weapon-rack { display: block; margin-top: 8px; }
+#weapon-rack svg { display: block; }
 /* Progression strip (progression.js): idols, REP bar, skills, jetpack, side job.
    Lives under the radio badge so the dense HUD layout is untouched. */
 #prog-panel { position: absolute; left: auto; right: 12px; top: 182px; width: 236px; background: var(--panel); border: 1px solid rgba(242,194,48,.55); border-radius: 6px; padding: 7px 10px; font: 600 11px var(--font-read); color: var(--ink); line-height: 1.55; z-index: 5; }
@@ -460,18 +535,8 @@ export function initHUD(G) {
   el.ppJet = $('pp-jet');
   el.ppSide = $('pp-side');
 
-  // Build the 4 weapon-rack slots once from WEAPONS.
-  weaponSlots = [];
-  if (el.weaponRack) {
-    el.weaponRack.innerHTML = '';
-    WEAPONS.forEach((w, i) => {
-      const slot = document.createElement('div');
-      slot.className = 'wslot' + (i === 0 ? ' active' : '');
-      slot.innerHTML = `${w.name}<span class="ammo">${w.ammo}</span>`;
-      el.weaponRack.appendChild(slot);
-      weaponSlots.push(slot);
-    });
-  }
+  // The weapon rack holds the GTA V wheel now (weaponWheelSVG, built by
+  // renderHUD on first paint and rebuilt only when selection/ammo changes).
   last = {};
   popups = [];
   seenScoreKeys = new Set();
@@ -556,23 +621,14 @@ export function renderHUD(G) {
     if (el.armourNum) el.armourNum.textContent = String(armour);
   }
 
-  // --- weapon rack (mag/reserve when the combat build tracks them,
-  // otherwise the total ammo combat.js actually stores) ---
+  // --- weapon wheel (GTA V wedges; mag/reserve per wedge, '—' for fists) ---
   const wi = (G.combat && typeof G.combat.weaponIndex === 'number') ? G.combat.weaponIndex : 0;
-  weaponSlots.forEach((slot, i) => {
-    const cw = (G.combat && G.combat.weapons && G.combat.weapons[i]) || null;
-    const ammo = cw ? cw.ammo : WEAPONS[i].ammo;
-    const disp = (cw && typeof cw.mag === 'number')
-      ? `${cw.mag}/${typeof cw.reserve === 'number' ? cw.reserve : 0}` : String(ammo);
-    const key = `wslot${i}`;
-    const sig = `${i === wi ? 'a' : ''}|${disp}`;
-    if (last[key] !== sig) {
-      last[key] = sig;
-      slot.classList.toggle('active', i === wi);
-      const ammoEl = slot.querySelector('.ammo');
-      if (ammoEl) ammoEl.textContent = disp;
-    }
-  });
+  const wheelWeapons = (G.combat && G.combat.weapons) || WEAPONS;
+  const wheelSig = wheelWeapons.map((w, i) => `${i === wi ? 'a' : ''}|${w.melee ? '-' : (typeof w.mag === 'number' ? `${w.mag}/${w.reserve}` : w.ammo)}`).join(';');
+  if (last.wheelSig !== wheelSig) {
+    last.wheelSig = wheelSig;
+    if (el.weaponRack) el.weaponRack.innerHTML = weaponWheelSVG(wheelWeapons, wi);
+  }
 
   // --- GTA-style top-right weapon panel: current weapon + ammo ---
   if (el.weaponPanel) {
@@ -582,9 +638,9 @@ export function renderHUD(G) {
       ? G.combat.weapons[wi].ammo : WEAPONS[wi].ammo;
     // Mag/reserve "32/160" when present; combat.js currently stores only
     // total `ammo`, so that is what shows until a mag/reserve build lands.
-    const wdisp = (w && typeof w.mag === 'number')
+    const wdisp = (w && w.melee) ? '—' : (w && typeof w.mag === 'number')
       ? `${w.mag}/${typeof w.reserve === 'number' ? w.reserve : 0}` : String(wammo);
-    const wlabel = (w && typeof w.mag === 'number') ? 'MAG' : 'AMMO';
+    const wlabel = (w && w.melee) ? 'MELEE' : (w && typeof w.mag === 'number') ? 'MAG' : 'AMMO';
     const wsig = `${wi}|${wdisp}`;
     if (last.wpSig !== wsig) {
       last.wpSig = wsig;

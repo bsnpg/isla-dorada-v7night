@@ -296,7 +296,35 @@ function damagePlayer(G, amount) {
 function tryFire(G) {
   const c = G.combat;
   const w = c.weapons[c.weaponIndex];
-  if (!w || w.mag <= 0) return; // empty mag: R reloads from reserve, never auto-fires
+  if (!w) return;
+  // Fists: a short swing — nearest live enemy within arm's reach in front
+  // of the camera. No ammo, no tracer, no muzzle flash.
+  if (w.melee) {
+    const dir = new THREE.Vector3();
+    G.camera.getWorldDirection(dir);
+    const origin = G.camera.position;
+    let best = null, bestT = Infinity;
+    for (const e of c.enemies) {
+      if (e.state !== 'alive') continue;
+      const dx = e.pos.x - origin.x, dy = e.pos.y + 1.2 - origin.y, dz = e.pos.z - origin.z;
+      const t = dx * dir.x + dy * dir.y + dz * dir.z;
+      if (t < 0 || t > w.range) continue;
+      const px = origin.x + dir.x * t - e.pos.x;
+      const py = origin.y + dir.y * t - (e.pos.y + 1.2);
+      const pz = origin.z + dir.z * t - e.pos.z;
+      if (px * px + py * py + pz * pz < 1.44 && t < bestT) { best = e; bestT = t; }
+    }
+    if (best) {
+      best.hp -= w.damage;
+      best.flashTimer = 0.12;
+      spawnDamageNumber(G, best.pos.x, best.pos.y + 2.3, best.pos.z, `-${w.damage}`, '#ffd94a');
+      spawnSparks(G, best.pos.x, best.pos.y + 1.2, best.pos.z, 4);
+      if (best.hp <= 0) { best.state = 'falling'; best.fallTimer = 0; }
+    }
+    G.stats.shotsFired += 1;
+    return;
+  }
+  if (w.mag <= 0) return; // empty mag: R reloads from reserve, never auto-fires
   w.mag -= 1;
   G.stats.shotsFired += 1;
 
@@ -811,13 +839,13 @@ export function updateCombat(G, dt) {
 
   if (G.mode !== 'play') return;
 
-  // Weapon switching: keys 1-5, or mouse wheel cycles the rack.
-  for (let i = 0; i < 5; i++) {
+  // Weapon switching: keys 1-6, or mouse wheel cycles the rack.
+  for (let i = 0; i < 6; i++) {
     if (Input.pressed(KEYS[`weapon${i + 1}`])) c.weaponIndex = i;
   }
   const wheel = Input.consumeWheel();
   if (wheel !== 0) {
-    c.weaponIndex = (c.weaponIndex + (wheel > 0 ? 1 : 4)) % 5;
+    c.weaponIndex = (c.weaponIndex + (wheel > 0 ? 1 : 5)) % 6;
   }
   // R reloads the current weapon from its reserve into the mag. If the
   // reserve is empty, nothing loads and the weapon stays unable to fire.
@@ -837,7 +865,7 @@ export function updateCombat(G, dt) {
   c._fireTimer -= dt;
   if (Input.mouseDown && c._fireTimer <= 0) {
     const w = c.weapons[c.weaponIndex];
-    if (w && w.mag > 0) {
+    if (w && (w.mag > 0 || w.melee)) {
       c._fireTimer = w.rate;
       tryFire(G);
     }

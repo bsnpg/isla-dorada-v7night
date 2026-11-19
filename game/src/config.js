@@ -123,6 +123,7 @@ export const WEAPONS = [
   { name: 'Shotgun', damage: 70, rate: 0.9,  ammo: 30,  magSize: 6,  reserve: 24,  range: 25,  flash: 1.5, tracer: 0xffb347 },
   { name: 'Rifle',   damage: 55, rate: 0.14, ammo: 120, magSize: 30, reserve: 90,  range: 90,  flash: 1.1, tracer: 0xfff2b0 },
   { name: 'Bazooka', damage: 220, rate: 1.2, ammo: 13,  magSize: 1,  reserve: 12,  range: 120, flash: 2.0, tracer: 0xff7733 },
+  { name: 'Fists',   damage: 25,  rate: 0.45, ammo: 0,  magSize: 0,  reserve: 0,   range: 2.5, flash: 0,   tracer: 0xffe08a, melee: true },
 ];
 
 // Arcade score popups: drift chains and near misses pay cash and are exposed
@@ -184,5 +185,5 @@ export const KEYS = {
   garage: 'KeyG',
   radioNext: 'KeyR',
   pause: 'Escape',
-  weapon1: 'Digit1', weapon2: 'Digit2', weapon3: 'Digit3', weapon4: 'Digit4', weapon5: 'Digit5',
+  weapon1: 'Digit1', weapon2: 'Digit2', weapon3: 'Digit3', weapon4: 'Digit4', weapon5: 'Digit5', weapon6: 'Digit6',
 };

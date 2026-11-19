@@ -472,6 +472,10 @@ export function updateDriving(G, dt) {
     }
   }
 
+  // Healthy car: E steps out (wrecked/flipped are handled above; without
+  // this there was no way out of a driven car at all).
+  if (Input.pressed(KEYS.interact)) { exitCar(G); return; }
+
   const fwd = Input.down(...KEYS.forward);
   const back = Input.down(...KEYS.back);
   const handbrake = Input.down(KEYS.handbrake);
