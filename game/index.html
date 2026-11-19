@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isla Dorada: 8 Jobs to Clear His Name</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --gold: #f2c230; --amber: #ff9a3c; --ink: #f5efe0; --muted: #c9bfa5;
+    --panel: rgba(12, 14, 22, 0.72); --panel2: rgba(12, 14, 22, 0.88);
+    --red: #e5484d; --blue: #4fb3d9; --green: #7ec850;
+    --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-read: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a2030; color: var(--ink); font-family: var(--font-ui); }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hidden { display: none !important; }
+
+  /* ---------- in-game HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; font-family: var(--font-ui); }
+  .panel { background: var(--panel); border: 1px solid rgba(242, 194, 48, 0.35); border-radius: 6px; padding: 8px 10px; backdrop-filter: blur(2px); }
+  #mission-panel { position: absolute; top: 12px; left: 12px; min-width: 300px; max-width: 360px; }
+  #mission-code { color: var(--gold); font: 700 12px var(--font-read); letter-spacing: 1px; }
+  #mission-name { font: 800 20px var(--font-ui); margin-top: 2px; }
+  #mission-stage { color: var(--muted); font: 600 12px var(--font-ui); margin-top: 2px; }
+  #mission-objective { font-size: 13px; margin-top: 4px; }
+  #mission-timer { font: 700 15px var(--font-read); color: var(--amber); margin-top: 4px; }
+  #mission-next { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  #top-right { position: absolute; top: 12px; right: 12px; text-align: right; }
+  #wanted { font-size: 22px; letter-spacing: 2px; color: var(--gold); text-shadow: 0 0 8px rgba(242,194,48,.6); }
+  #wanted .off { color: rgba(245,239,224,.25); text-shadow: none; }
+  #money { font: 800 22px var(--font-read); color: #8fe388; margin-top: 2px; }
+  #game-clock { color: var(--muted); font: 600 13px var(--font-read); margin-top: 2px; }
+  #police-list { position: absolute; left: 12px; top: 38%; width: 250px; }
+  #police-title { color: var(--red); font: 800 12px var(--font-read); letter-spacing: 1px; margin-bottom: 4px; }
+  .police-row { display: flex; justify-content: space-between; font: 600 12px var(--font-read); padding: 2px 0; }
+  .police-row .st { color: var(--amber); }
+  #minimap-wrap { position: absolute; right: 12px; bottom: 12px; text-align: center; }
+  #minimap { border-radius: 50%; border: 2px solid rgba(242,194,48,.6); background: #10141f; display: block; }
+  #district { font: 700 13px var(--font-ui); margin-top: 4px; text-shadow: 0 1px 3px #000; }
+  #vitals { position: absolute; left: 12px; bottom: 12px; width: 230px; }
+  .bar { height: 10px; background: rgba(255,255,255,.15); border-radius: 5px; overflow: hidden; margin-top: 4px; }
+  .bar > i { display: block; height: 100%; }
+  #health-fill { background: var(--green); width: 100%; }
+  #armour-fill { background: var(--blue); width: 0%; }
+  .bar-label { font: 700 11px var(--font-read); color: var(--muted); display: flex; justify-content: space-between; }
+  #weapon-rack { display: flex; gap: 4px; margin-top: 8px; }
+  .wslot { flex: 1; text-align: center; font: 700 11px var(--font-read); padding: 5px 2px; border: 1px solid rgba(245,239,224,.25); border-radius: 4px; background: rgba(12,14,22,.6); }
+  .wslot.active { border-color: var(--gold); color: var(--gold); }
+  .wslot .ammo { display: block; color: var(--muted); font-weight: 400; font-size: 10px; }
+  #drive-panel { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); text-align: center; }
+  #speed { font: 800 34px var(--font-read); line-height: 1; text-shadow: 0 2px 6px #000; }
+  #speed small { font-size: 13px; color: var(--muted); }
+  #vehicle-name { font: 700 13px var(--font-ui); color: var(--gold); }
+  #radio { font: 600 12px var(--font-read); color: var(--muted); margin-top: 2px; }
+  #dialogue { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); width: 560px; max-width: 86vw; display: flex; gap: 10px; align-items: center; }
+  #dialogue-portrait { width: 46px; height: 46px; border-radius: 50%; background: #3a2f1a; border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; font: 800 20px var(--font-ui); color: var(--gold); flex: none; }
+  #dialogue-speaker { font: 800 12px var(--font-read); color: var(--gold); letter-spacing: 1px; }
+  #dialogue-text { font-size: 14px; margin-top: 2px; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+  #crosshair i { position: absolute; background: var(--ink); }
+  #crosshair i:nth-child(1) { left: -1px; top: -11px; width: 2px; height: 7px; }
+  #crosshair i:nth-child(2) { left: -1px; top: 4px; width: 2px; height: 7px; }
+  #crosshair i:nth-child(3) { left: -11px; top: -1px; width: 7px; height: 2px; }
+  #crosshair i:nth-child(4) { left: 4px; top: -1px; width: 7px; height: 2px; }
+  #prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font: 700 15px var(--font-ui); background: var(--panel2); border: 1px solid var(--gold); border-radius: 4px; padding: 6px 12px; }
+  #toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font: 800 26px var(--font-ui); color: var(--gold); text-shadow: 0 2px 10px #000; text-align: center; }
+  #damage { position: fixed; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 120px 40px rgba(229, 72, 77, 0.55); opacity: 0; transition: opacity .2s; }
+
+  /* ---------- full screens ---------- */
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(20,16,40,.55), rgba(10,8,20,.88)); }
+  .screen h1 { margin: 0; font-size: 64px; letter-spacing: 4px; color: var(--gold); text-shadow: 0 4px 24px rgba(242,194,48,.5); }
+  .screen h2 { margin: 4px 0 0; font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: 2px; }
+  .tagline { margin-top: 10px; font-size: 15px; color: var(--muted); font-style: italic; }
+  .menu { margin-top: 28px; display: flex; flex-direction: column; gap: 10px; width: 320px; }
+  .menu button, .screen button { pointer-events: auto; cursor: pointer; font: 700 16px var(--font-ui); color: var(--ink); background: rgba(242,194,48,.14); border: 1px solid var(--gold); border-radius: 6px; padding: 12px; }
+  .menu button:hover, .screen button:hover { background: rgba(242,194,48,.32); }
+  .chars { margin-top: 26px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 1120px; }
+  .char { width: 160px; text-align: center; background: var(--panel); border: 1px solid rgba(242,194,48,.35); border-radius: 8px; padding: 12px 8px; }
+  .char .face { width: 64px; height: 64px; margin: 0 auto 8px; border-radius: 50%; background: #3a2f1a; border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; font: 800 28px var(--font-ui); color: var(--gold); }
+  .char .who { font: 800 14px var(--font-ui); }
+  .char .role { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .controls { margin-top: 22px; font: 600 12px var(--font-read); color: var(--muted); text-align: center; line-height: 1.9; }
+  #howto { margin-top: 16px; width: 560px; max-width: 90vw; background: var(--panel2); border: 1px solid rgba(242,194,48,.35); border-radius: 8px; padding: 14px 18px; font-size: 13px; line-height: 1.7; }
+  /* map screen */
+  #map-screen { flex-direction: row; gap: 20px; }
+  #map-canvas { border: 2px solid rgba(242,194,48,.6); border-radius: 8px; background: #10141f; }
+  #map-side { width: 340px; }
+  #map-side h3 { margin: 0 0 8px; color: var(--gold); letter-spacing: 1px; }
+  #map-checklist { list-style: none; margin: 0; padding: 0; font-size: 14px; line-height: 1.7; }
+  #map-checklist li.done { color: var(--green); text-decoration: line-through; }
+  #map-checklist li.current { color: var(--gold); font-weight: 800; }
+  #map-checklist .pay { color: var(--green); font-weight: 700; }
+  #map-current-job { margin: 0 0 6px; background: var(--panel); border: 1px solid rgba(242,194,48,.5); border-radius: 6px; padding: 6px 10px; }
+  #map-current-job h3 { margin: 0 0 1px; color: var(--gold); letter-spacing: 1px; font-size: 12px; }
+  #map-current-job .cj-name { color: var(--gold); font-weight: 800; font-size: 15px; }
+  #map-current-job .cj-obj { font: 600 13px var(--font-read); color: var(--muted); line-height: 1.5; }
+  #map-current-job .cj-meta { font: 700 12px var(--font-read); color: var(--ink); margin-top: 2px; }
+  #map-stats { margin-top: 6px; font: 600 13px var(--font-read); color: var(--muted); line-height: 1.7; }
+  #map-stats b { color: var(--ink); }
+  #map-legend { margin-top: 6px; }
+  #map-legend h3 { margin: 0 0 6px; color: var(--gold); letter-spacing: 1px; }
+  .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font: 600 12px var(--font-read); color: var(--muted); line-height: 1.5; }
+  .legend-grid b { color: var(--ink); }
+  /* garage — right-side panel over the 3D garage interior: the left of the
+     screen stays nearly clear so the car on the hydraulic lift, the neon
+     GARAGE DORADA sign and the work lights read through (garage.js drives
+     the camera). The DOM upgrade list itself is unchanged. */
+  #garage-screen { align-items: flex-end; justify-content: center; padding: 20px 44px 20px 20px;
+    background: linear-gradient(90deg, rgba(10,8,20,0.02) 0%, rgba(10,8,20,0.35) 48%, rgba(10,8,20,0.90) 68%); }
+  #garage-screen h2 { text-align: right; }
+  #garage-screen .menu { width: 440px; }
+  #garage-money { font: 800 20px var(--font-read); color: #8fe388; margin: 10px 0 4px; text-align: right; }
+  .upg { display: flex; justify-content: space-between; gap: 10px; background: var(--panel); border: 1px solid rgba(242,194,48,.35); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
+  .upg .price { color: var(--green); font-family: var(--font-read); }
+  .upg button { padding: 6px 14px; font-size: 13px; }
+  .upg.owned { opacity: .55; }
+  #garage-money { font: 800 20px var(--font-read); color: #8fe388; margin: 10px 0 4px; }
+  #dead-screen h1 { color: var(--red); text-shadow: 0 4px 24px rgba(229,72,77,.5); }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="Isla Dorada: open-world crime game"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+<div id="damage"></div>
+
+<div id="hud" class="hidden">
+  <div id="mission-panel" class="panel">
+    <div id="mission-code">JOB 1/8</div>
+    <div id="mission-name">Pendaratan</div>
+    <div id="mission-stage">STAGE 1/3</div>
+    <div id="mission-objective">Drive the casino boss to Casino Dorada</div>
+    <div id="mission-timer">02:06</div>
+    <div id="mission-next">NEXT: JOB 2 — Cari Saksi</div>
+  </div>
+  <div id="top-right">
+    <div id="wanted"><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span><span class="off">★</span></div>
+    <div id="money">$1,250</div>
+    <div id="game-clock">DAY 1&nbsp;&nbsp;18:36</div>
+  </div>
+  <div id="police-list" class="panel hidden">
+    <div id="police-title">IDPD RESPONSE</div>
+    <div id="police-units"></div>
+  </div>
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="district">Beachfront</div>
+  </div>
+  <div id="vitals">
+    <div class="bar-label"><span>HEALTH</span><span id="health-num">100</span></div>
+    <div class="bar"><i id="health-fill"></i></div>
+    <div class="bar-label"><span>ARMOUR</span><span id="armour-num">0</span></div>
+    <div class="bar"><i id="armour-fill"></i></div>
+    <div id="weapon-rack"></div>
+  </div>
+  <div id="drive-panel">
+    <div id="speed">0 <small>KM/H</small></div>
+    <div id="vehicle-name">ON FOOT</div>
+    <div id="radio">RADIO SOL 92.5 — Sunset Pop</div>
+  </div>
+  <div id="dialogue" class="panel hidden">
+    <div id="dialogue-portrait">W</div>
+    <div><div id="dialogue-speaker">WOWO</div><div id="dialogue-text"></div></div>
+  </div>
+  <div id="crosshair" class="hidden"><i></i><i></i><i></i><i></i></div>
+  <div id="prompt" class="hidden">E — STEAL CAR</div>
+  <div id="toast" class="hidden"></div>
+</div>
+
+<div id="title-screen" class="screen">
+  <h1>ISLA DORADA</h1>
+  <h2>8 JOBS TO CLEAR HIS NAME</h2>
+  <div class="tagline">"One dishonorable discharge. One golden island. Eight jobs to buy back his name."</div>
+  <div class="chars">
+    <div class="char"><div class="face">W</div><div class="who">WOWO</div><div class="role">Ex-Sergeant, dishonorably discharged. Driver, fighter, tactician.</div></div>
+    <div class="char"><div class="face">B</div><div class="who">OFFICER BRAGA</div><div class="role">IDPD. The man who framed Wowo — and the man who must fall.</div></div>
+    <div class="char"><div class="face">M</div><div class="who">MARA</div><div class="role">The witness. She saw everything — if the IDPD does not reach her first.</div></div>
+    <div class="char"><div class="face">R</div><div class="who">RICO SALAS</div><div class="role">The fixer. Every back door on Isla Dorada opens for him — for a price.</div></div>
+    <div class="char"><div class="face">L</div><div class="who">LUNA VELAS</div><div class="role">Getaway driver. If she is behind the wheel, the IDPD is already behind.</div></div>
+    <div class="char"><div class="face">K</div><div class="who">KIKO TAN</div><div class="role">The hacker. Cracks IDPD cameras and safes from a shack on the beach.</div></div>
+  </div>
+  <div class="menu">
+    <button id="btn-continue">CONTINUE — SAVE SLOT 1</button>
+    <button id="btn-new">NEW GAME</button>
+    <button id="btn-howto">HOW TO PLAY</button>
+  </div>
+  <div id="howto" class="hidden">
+    <b>WASD</b> drive / walk &nbsp;·&nbsp; <b>E</b> steal or enter car, exit car &nbsp;·&nbsp; <b>Mouse</b> aim on foot, <b>Click</b> shoot<br>
+    <b>1–5</b> switch weapon &nbsp;·&nbsp; <b>Space</b> handbrake / jetpack (on foot) &nbsp;·&nbsp; <b>Shift</b> nitro (if upgraded) &nbsp;·&nbsp; <b>R</b> change radio / reload<br>
+    <b>M</b> city map &nbsp;·&nbsp; <b>G</b> garage (at the garage) &nbsp;·&nbsp; <b>Esc</b> pause<br>
+    Steal cars, outrun the IDPD, finish all 8 jobs — and clear Wowo's name.
+  </div>
+  <div class="controls">8 STORY JOBS · POLICE PURSUIT &amp; HELICOPTER · CAR STEALING · ON-FOOT COMBAT · GARAGE UPGRADES · RADIO · SAVES</div>
+</div>
+
+<div id="map-screen" class="screen hidden">
+  <canvas id="map-canvas" width="640" height="640"></canvas>
+  <div id="map-side">
+    <h3>ISLA DORADA — CITY MAP</h3>
+    <div id="map-current-job"></div>
+    <ul id="map-checklist"></ul>
+    <div id="map-stats"></div>
+    <div id="map-legend"></div>
+    <div class="menu"><button id="btn-close-map">CLOSE — M</button></div>
+  </div>
+</div>
+
+<div id="garage-screen" class="screen hidden">
+  <h2>GARAGE — GOLDEN PALMS</h2>
+  <div id="garage-money">$1,250</div>
+  <div class="menu" id="garage-list"></div>
+  <div class="menu"><button id="btn-close-garage">CLOSE — G</button></div>
+</div>
+
+<div id="pause-screen" class="screen hidden">
+  <h2>PAUSED</h2>
+  <div class="menu"><button id="btn-resume">RESUME</button><button id="btn-quit-title">QUIT TO TITLE</button></div>
+</div>
+
+<div id="dead-screen" class="screen hidden">
+  <h1>WOWO IS DOWN</h1>
+  <div class="tagline">The IDPD drags you to the Marina clinic. Your mission restarts — the island keeps your cash.</div>
+  <div class="menu"><button id="btn-respawn">RESPAWN AT THE MARINA</button></div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
