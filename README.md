@@ -1,8 +1,8 @@
 # Isla Dorada: 8 Jobs to Clear His Name
 
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/bsnpg/isla-dorada/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/bsnpg/isla-dorada/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/bsnpg/isla-dorada-v7night/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/bsnpg/isla-dorada-v7night/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 An open-world crime game set on Isla Dorada, a sun-soaked island of resorts, a casino row, a marina and a harbor. You play **Wowo**, an ex-Sergeant dishonorably discharged from the army, who came to the island to disappear — and ended up the most wanted getaway driver on it. Across **8 staged story jobs** he steals cars, outruns the IDPD, fights rival crews and gathers the evidence to clear his name, one job at a time, until the final five-star escape off the island.
 
